@@ -1,4 +1,5 @@
 import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Inter } from "next/font/google";
@@ -17,6 +18,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <AuthProvider>{children}</AuthProvider>
     <html lang="en" className={`${inter.variable} ${inter.className}`}>
       <body className={inter.className}>
         <Navbar />
