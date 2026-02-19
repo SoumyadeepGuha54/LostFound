@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+SETUP_GUIDE.md
+README_AUTH.md
+QUICKSTART.md
+ARCHITECTURE.md
