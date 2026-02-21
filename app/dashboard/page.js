@@ -1,111 +1,136 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 import * as RadixSelect from "@radix-ui/react-select";
-
-// --- Generate random data ---
-const locations = [
-  "Library",
-  "Phase-II Building",
-  "BCA Building",
-  "Canteen",
-  "Parking Lot",
-  "Auditorium",
-  "Playgrounds",
-  "Other",
-];
-const months = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const itemNames = [
-  "Black Wallet",
-  "MacBook Charger",
-  "Water Bottle",
-  "Notebook",
-  "Umbrella",
-  "ID Card",
-  "Keys",
-  "Backpack",
-  "USB Drive",
-];
-
-const descriptions = [
-  "Found near the reading section.",
-  "Left by the vending machines.",
-  "On a bench outside.",
-  "Inside the computer lab.",
-  "Near the front desk.",
-  "Under a table in the cafeteria.",
-  "On the bus stop bench.",
-  "In the locker room.",
-  "At the information kiosk.",
-];
-
-function generateItems(type, count) {
-  return Array.from({ length: count }, (_, i) => {
-    const randomLocation =
-      locations[Math.floor(Math.random() * locations.length)];
-    const randomDay = Math.floor(Math.random() * 28) + 1;
-    const randomMonth = months[Math.floor(Math.random() * months.length)];
-    const randomHour = Math.floor(Math.random() * 12) + 1;
-    const randomMinute = Math.floor(Math.random() * 60)
-      .toString()
-      .padStart(2, "0");
-    const randomAmPm = Math.random() > 0.5 ? "AM" : "PM";
-    const randomClaims = Math.floor(Math.random() * 5);
-    const randomTimeString = `${randomDay} ${randomMonth} · ${randomHour}:${randomMinute} ${randomAmPm}`;
-
-    return {
-      id: `${type}-${i}`,
-      name:
-        itemNames[i % itemNames.length] +
-        (i >= itemNames.length ? ` ${i + 1}` : ""),
-      location: randomLocation,
-      time: randomTimeString,
-      claims: randomClaims,
-      description: descriptions[i % descriptions.length],
-      type,
-      isClaimedByUser: false,
-    };
-  });
-}
-
-// create 9 sample found posts and 9 sample lost posts
-const foundItems = generateItems("Found", 9);
-const lostItems = generateItems("Lost", 9);
-const items = [...foundItems, ...lostItems];
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [visibleCount, setVisibleCount] = useState(6);
-  const [itemList, setItemList] = useState(items);
+  const [itemList, setItemList] = useState([]);
   const [viewType, setViewType] = useState("Found");
+  const [loading, setLoading] = useState(true);
+  const [userClaims, setUserClaims] = useState([]);
 
-  const handleClaimToggle = (id) => {
-    setItemList((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              isClaimedByUser: !item.isClaimedByUser,
-              claims: !item.isClaimedByUser
-                ? item.claims + 1
-                : Math.max(0, item.claims - 1),
-            }
-          : item,
-      ),
-    );
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  // Fetch items and user claims
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchItems();
+      fetchUserClaims();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      const [foundRes, lostRes] = await Promise.all([
+        fetch("/api/items/found"),
+        fetch("/api/items/lost"),
+      ]);
+
+      const foundData = await foundRes.json();
+      const lostData = await lostRes.json();
+
+      const foundItems = (foundData.data || []).map((item) => ({
+        id: item.id,
+        name: item.item_name,
+        location: item.location,
+        time: formatDateTime(item.created_at),
+        claims: item.claims,
+        description: item.description,
+        type: "Found",
+        imageUrl: item.image_url,
+        posterName: item.users?.name || "Unknown",
+      }));
+
+      const lostItems = (lostData.data || []).map((item) => ({
+        id: item.id,
+        name: item.item_name,
+        location: item.location,
+        time: formatDateTime(item.created_at),
+        claims: item.matches,
+        description: item.description,
+        type: "Lost",
+        posterName: item.users?.name || "Unknown",
+      }));
+
+      setItemList([...foundItems, ...lostItems]);
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserClaims = async () => {
+    try {
+      const res = await fetch("/api/items/claims");
+      const data = await res.json();
+      setUserClaims(data.data || []);
+    } catch (error) {
+      console.error("Error fetching claims:", error);
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return format(date, "d MMM · h:mm a");
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  const isItemClaimedByUser = (itemId, type) => {
+    if (type === "Found") {
+      return userClaims.some(
+        (claim) =>
+          claim.found_item_id === itemId && claim.claim_type === "found",
+      );
+    } else {
+      return userClaims.some(
+        (claim) =>
+          claim.lost_item_id === itemId && claim.claim_type === "match",
+      );
+    }
+  };
+
+  const handleClaimToggle = async (item) => {
+    const isClaimed = isItemClaimedByUser(item.id, item.type);
+    const claimType = item.type === "Found" ? "found" : "match";
+    const action = isClaimed ? "remove" : "add";
+
+    try {
+      const res = await fetch("/api/items/claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemId: item.id,
+          claimType,
+          action,
+        }),
+      });
+
+      if (res.ok) {
+        // Refresh claims and items
+        await fetchUserClaims();
+        await fetchItems();
+      }
+    } catch (error) {
+      console.error("Error toggling claim:", error);
+    }
   };
 
   const handleLoadMore = () => {
@@ -291,71 +316,97 @@ export default function Home() {
 
           {/* Results count */}
           <div className="mb-4 text-sm text-black/50">
-            Showing {visibleItems.length} of {filteredItems.length} items
+            {loading ? (
+              "Loading..."
+            ) : (
+              <>
+                Showing {visibleItems.length} of {filteredItems.length} items
+              </>
+            )}
           </div>
 
           {/* Grid */}
-          {visibleItems.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-20">
+              <p className="text-black/40">Loading items...</p>
+            </div>
+          ) : visibleItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
-              {visibleItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="group border border-black/10 rounded-xl p-5 hover:shadow-sm transition-shadow duration-200 flex flex-col bg-white"
-                >
-                  {item.type === "Found" && (
-                    <div className="h-44 bg-gray-50 rounded-xl flex items-center justify-center text-sm text-black/40 mb-5 overflow-hidden">
-                      <span>Image Preview</span>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="text-xs px-3 py-1 border border-black/10 rounded-full bg-white text-black/80">
-                      {item.location}
-                    </span>
-                    <span className="text-xs px-3 py-1 border border-black/10 rounded-full bg-white text-black/60">
-                      {item.time}
-                    </span>
-                  </div>
-
-                  <h3 className="text-lg font-medium mb-2">{item.name}</h3>
-
-                  <p className="text-sm text-black/60 mb-6">
-                    {item.description}
-                  </p>
-
-                  <div className="mt-auto flex items-center justify-between">
-                    <span className="text-xs text-black/40">
-                      {item.type === "Lost"
-                        ? `${item.claims} possible match${item.claims !== 1 ? "es" : ""}`
-                        : `${item.claims} claim request${item.claims !== 1 ? "s" : ""}`}
-                    </span>
-
-                    {item.type === "Lost" ? (
-                      <button
-                        onClick={() => handleClaimToggle(item.id)}
-                        className={`text-sm px-4 py-2 rounded-lg transition duration-200 ${
-                          item.isClaimedByUser
-                            ? "bg-black text-white border border-black hover:opacity-90"
-                            : "bg-white text-black border border-black/10 hover:bg-black hover:text-white"
-                        }`}
-                      >
-                        Found
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleClaimToggle(item.id)}
-                        className={`text-sm px-4 py-2 rounded-lg transition duration-200 ${
-                          item.isClaimedByUser
-                            ? "bg-black text-white border border-black hover:opacity-90"
-                            : "bg-white text-black border border-black/10 hover:bg-black hover:text-white"
-                        }`}
-                      >
-                        {item.isClaimedByUser ? "Claimed" : "Claim"}
-                      </button>
+              {visibleItems.map((item) => {
+                const isClaimed = isItemClaimedByUser(item.id, item.type);
+                return (
+                  <div
+                    key={item.id}
+                    className="group border border-black/10 rounded-xl p-5 hover:shadow-sm transition-shadow duration-200 flex flex-col bg-white"
+                  >
+                    {item.type === "Found" && (
+                      <div className="relative h-44 bg-gray-50 rounded-xl flex items-center justify-center text-sm text-black/40 mb-5 overflow-hidden">
+                        {item.imageUrl ? (
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="object-cover"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          />
+                        ) : (
+                          <span>No Image</span>
+                        )}
+                      </div>
                     )}
+
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="text-xs px-3 py-1 border border-black/10 rounded-full bg-white text-black/80">
+                        {item.location}
+                      </span>
+                      <span className="text-xs px-3 py-1 border border-black/10 rounded-full bg-white text-black/60">
+                        {item.time}
+                      </span>
+                      <span className="text-xs px-3 py-1 border border-black/10 rounded-full bg-white text-black/70">
+                        Posted by {item.posterName}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-medium mb-2">{item.name}</h3>
+
+                    <p className="text-sm text-black/60 mb-6">
+                      {item.description}
+                    </p>
+
+                    <div className="mt-auto flex items-center justify-between">
+                      <span className="text-xs text-black/40">
+                        {item.type === "Lost"
+                          ? `${item.claims} possible match${item.claims !== 1 ? "es" : ""}`
+                          : `${item.claims} claim request${item.claims !== 1 ? "s" : ""}`}
+                      </span>
+
+                      {item.type === "Lost" ? (
+                        <button
+                          onClick={() => handleClaimToggle(item)}
+                          className={`text-sm px-4 py-2 rounded-lg transition duration-200 ${
+                            isClaimed
+                              ? "bg-black text-white border border-black hover:opacity-90"
+                              : "bg-white text-black border border-black/10 hover:bg-black hover:text-white"
+                          }`}
+                        >
+                          Found
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleClaimToggle(item)}
+                          className={`text-sm px-4 py-2 rounded-lg transition duration-200 ${
+                            isClaimed
+                              ? "bg-black text-white border border-black hover:opacity-90"
+                              : "bg-white text-black border border-black/10 hover:bg-black hover:text-white"
+                          }`}
+                        >
+                          {isClaimed ? "Claimed" : "Claim"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-20">
