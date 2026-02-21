@@ -64,19 +64,10 @@ export default function SignUpForm() {
         throw new Error(data.error || "Failed to create account");
       }
 
-      // Auto sign in after successful registration
-      const result = await signIn("credentials", {
-        redirect: false,
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (result?.error) {
-        setError("Account created but login failed. Please try logging in.");
-      } else {
-        router.push("/");
-        router.refresh();
-      }
+      // Redirect to login page after successful registration
+      alert("Account created successfully! Please login.");
+      router.push("/login");
+      router.refresh();
     } catch (error) {
       setError(error.message || "Something went wrong. Please try again.");
     } finally {
