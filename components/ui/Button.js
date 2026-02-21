@@ -12,16 +12,15 @@ export default function Button({
 }) {
   const baseStyles =
     "px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2";
-
   const variants = {
     primary:
-      "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
+      "bg-black text-white hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed",
     secondary:
-      "bg-white border-2 border-gray-300 text-gray-700 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed",
+      "bg-white border border-black text-black hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed",
     outline:
-      "bg-transparent border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed",
+      "bg-transparent border border-black text-black hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed",
     social:
-      "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed",
+      "bg-white border border-black text-black hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed",
   };
 
   return (
@@ -32,7 +31,11 @@ export default function Button({
       className={`${baseStyles} ${variants[variant]} ${fullWidth ? "w-full" : ""}`}
     >
       {loading ? (
-        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        variant === "primary" ? (
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+        )
       ) : (
         <>
           {Icon && <Icon size={20} />}
