@@ -23,7 +23,10 @@ export default function SignUpForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const colleges = ["Heritage", "Techno"];
+  const colleges = [
+    "Heritage Institute of Technology",
+    "Techno Main Salt Lake",
+  ];
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -166,10 +169,7 @@ export default function SignUpForm() {
       <div className="mt-6 text-center">
         <p className="text-gray-600">
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-blue-600 hover:text-blue-700 font-semibold"
-          >
+          <Link href="/login" className="text-black font-semibold underline">
             Login
           </Link>
         </p>

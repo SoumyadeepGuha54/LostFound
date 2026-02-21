@@ -52,17 +52,17 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+    <div className="w-full max-w-md bg-white rounded-2xl shadow-md border border-black/5 p-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-        <p className="text-gray-600">Sign in to your account</p>
+        <h2 className="text-3xl font-bold text-black mb-2">Welcome Back</h2>
+        <p className="text-black/60">Sign in to your account</p>
       </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-white border border-black px-4 py-3 rounded-lg text-sm text-black">
             {error}
           </div>
         )}
@@ -92,7 +92,7 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-10.5 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-10.5 text-black/50 hover:text-black"
           >
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -103,13 +103,13 @@ export default function LoginForm() {
             <input
               id="remember"
               type="checkbox"
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-4 h-4 accent-black border-black rounded focus:ring-black"
             />
-            <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
+            <label htmlFor="remember" className="ml-2 text-sm text-black/70">
               Remember me
             </label>
           </div>
-          <a href="#" className="text-sm text-blue-600 hover:text-blue-700">
+          <a href="#" className="text-sm text-black underline hover:text-black">
             Forgot password?
           </a>
         </div>
@@ -121,12 +121,9 @@ export default function LoginForm() {
 
       {/* Footer */}
       <div className="mt-6 text-center">
-        <p className="text-gray-600">
+        <p className="text-black/70">
           Don&apos;t have an account yet?{" "}
-          <Link
-            href="/signup"
-            className="text-blue-600 hover:text-blue-700 font-semibold"
-          >
+          <Link href="/signup" className="text-black font-semibold underline">
             Sign up
           </Link>
         </p>
